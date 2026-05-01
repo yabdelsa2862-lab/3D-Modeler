@@ -1,0 +1,16 @@
+[bootstrap] starting
+[bootstrap] missing packages: []
+[bootstrap] MainWindow shown.
+unable to use sparse matrix, falling back!
+Traceback (most recent call last):
+  File "C:\Users\Yousef\Downloads\New folder\3d-model-generator\venv\Lib\site-packages\trimesh\geometry.py", line 396, in weighted_vertex_normals
+    return util.unitize(summed_sparse())
+                        ~~~~~~~~~~~~~^^
+  File "C:\Users\Yousef\Downloads\New folder\3d-model-generator\venv\Lib\site-packages\trimesh\geometry.py", line 370, in summed_sparse
+    matrix = index_sparse(vertex_count, faces, data=face_angles.ravel())
+  File "C:\Users\Yousef\Downloads\New folder\3d-model-generator\venv\Lib\site-packages\trimesh\geometry.py", line 472, in index_sparse
+    return scipy.sparse.coo_matrix((data, (row, col)), shape=shape, dtype=data.dtype)
+           ^^^^^^^^^^^^
+  File "C:\Users\Yousef\Downloads\New folder\3d-model-generator\venv\Lib\site-packages\trimesh\exceptions.py", line 35, in __getattribute__
+    raise exc_type(*exc_args)
+ModuleNotFoundError: No module named 'scipy'

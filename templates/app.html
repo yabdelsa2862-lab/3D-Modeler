@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Forge 3D</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+/* ─── Reset ─────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; overflow: hidden; user-select: none; }
+
+/* ─── System / Apple Design Tokens ──────────────────── */
+:root {
+  --sys-bg:           #0f0f11;
+  --sys-bg2:          #1c1c1e;
+  --sys-bg3:          #2c2c2e;
+  --sys-bg4:          #3a3a3c;
+  --sys-sep:          rgba(84, 84, 88, 0.55);
+  --sys-sep2:         rgba(255, 255, 255, 0.07);
+  --sys-label:        #ffffff;
+  --sys-label2:       rgba(235, 235, 245, 0.60);
+  --sys-label3:       rgba(235, 235, 245, 0.30);
+  --sys-label4:       rgba(235, 235, 245, 0.16);
+  --sys-blue:         #0a84ff;
+  --sys-blue-hover:   #1a8fff;
+  --sys-blue-press:   #0070e8;
+  --sys-green:        #30d158;
+  --sys-yellow:       #ffd60a;
+  --sys-orange:       #ff9f0a;
+  --sys-red:          #ff453a;
+  --sys-teal:         #5ac8fa;
+  --sys-purple:       #bf5af2;
+  --vibrancy:         rgba(20, 20, 22, 0.82);
+  --vibrancy-light:   rgba(44, 44, 46, 0.70);
+  --radius-sm:        8px;
+  --radius-md:        12px;
+  --radius-lg:        16px;
+  --radius-xl:        20px;
+  --sidebar-w:        292px;
+  --titlebar-h:       44px;
+  --panel-h:          300px;
+}
+
+/* ─── Base ───────────────────────────────────────────── */
+body {
+  font-family: -apple-system, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
+  background: var(--sys-bg);
+  color: var(--sys-label);
+  display: flex;
+  flex-direction: column;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Titlebar ───────────────────────────────────────── */
+.titlebar {
+  height: var(--titlebar-h);
+  background: rgba(15, 15, 17, 0.90);
+  backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 0.5px solid var(--sys-sep);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 0;
+  flex-shrink: 0;
+  position: relative;
+  cursor: default;
+  z-index: 100;
+}
+
+/* Drag region covers the full bar; buttons sit on top via pointer-events */
+.titlebar-drag {
+  position: absolute;
+  inset: 0;
+  cursor: move;
+}
+
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+  position: relative; /* above drag layer */
+  z-index: 1;
+}
+
+.tl {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: filter 0.12s;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tl-close    { background: #ff5f57; }
+.tl-minimize { background: #febc2e; }
+.tl-maximize { background: #28c840; }
+
+/* Symbol glyphs — hidden until hover, just like macOS */
+.tl::after {
+  content: '';
+  font-size: 8px;
+  font-weight: 900;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  transition: opacity 0.1s;
+  pointer-events: none;
+  position: absolute;
+}
+.tl-close::after    { content: '✕'; }
+.tl-minimize::after { content: '−'; font-size: 10px; }
+.tl-maximize::after { content: '+'; font-size: 10px; }
+.traffic-lights:hover .tl::after { opacity: 1; }
+.tl:hover { filter: brightness(0.85); }
+
+.titlebar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.titlebar-icon { font-size: 15px; }
+
+.titlebar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--sys-label);
+  letter-spacing: -0.1px;
+}
+
+.titlebar-subtitle {
+  font-size: 12px;
+  color: var(--sys-label3);
+  font-weight: 400;
+}
+
+.titlebar-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+}
+
+.tb-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--sys-label2);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.tb-btn:hover { background: var(--sys-bg4); color: var(--sys-label); }
+.tb-btn.active { background: var(--sys-bg4); color: var(--sys-blue); }
+
+/* ─── App shell ──────────────────────────────────────── */
+.app-shell {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ─── Sidebar ────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--vibrancy);
+  backdrop-filter: blur(32px) saturate(200%);
+  border-right: 0.5px solid var(--sys-sep);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.sidebar.hidden { width: 0; opacity: 0; pointer-events: none; }
+
+.sidebar-inner {
+  width: var(--sidebar-w);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--sys-bg4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* Section labels */
+.section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--sys-label3);
+  margin-bottom: 8px;
+}
+
+/* ─── Segmented control (provider) ──────────────────── */
+.seg-wrap {
+  background: rgba(118, 118, 128, 0.18);
+  border-radius: 10px;
+  padding: 2px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 1px;
+}
+
+.seg-btn {
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 2px;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--sys-label2);
+  cursor: pointer;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  text-align: center;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.seg-btn .seg-icon { display: block; font-size: 13px; margin-bottom: 2px; }
+
+.seg-btn.active {
+  background: rgba(255, 255, 255, 0.11);
+  color: var(--sys-label);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 0 0.5px rgba(255,255,255,0.08);
+}
+
+/* ─── Settings panels ────────────────────────────────── */
+.settings-panel { display: none; flex-direction: column; gap: 10px; }
+.settings-panel.active { display: flex; }
+
+.field-group { display: flex; flex-direction: column; gap: 5px; }
+
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sys-label2);
+}
+
+.field-input,
+.field-select {
+  width: 100%;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-sm);
+  padding: 8px 11px;
+  color: var(--sys-label);
+  font-size: 13px;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  appearance: none;
+}
+
+.field-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath fill='rgba(235,235,245,0.4)' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  padding-right: 28px;
+}
+
+.field-input:focus, .field-select:focus {
+  outline: none;
+  border-color: var(--sys-blue);
+  background: rgba(10, 132, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.18);
+}
+
+.field-input::placeholder { color: var(--sys-label4); }
+
+.hint {
+  font-size: 11.5px;
+  color: var(--sys-label3);
+  line-height: 1.5;
+}
+.hint a { color: var(--sys-blue); text-decoration: none; }
+.hint code {
+  font-size: 10.5px;
+  background: var(--sys-bg4);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Monaco', monospace;
+}
+
+/* Separator */
+.sep {
+  height: 0.5px;
+  background: var(--sys-sep);
+  margin: 2px 0;
+}
+
+/* ─── Prompt area ────────────────────────────────────── */
+.prompt-section { display: flex; flex-direction: column; gap: 10px; }
+
+.prompt-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.examples-btn {
+  background: rgba(255,255,255,0.07);
+  border: 0.5px solid rgba(255,255,255,0.10);
+  border-radius: 20px;
+  color: var(--sys-label2);
+  font-size: 11.5px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+  -webkit-app-region: no-drag;
+}
+.examples-btn:hover { background: rgba(255,255,255,0.11); color: var(--sys-label); }
+
+.prompt-wrap { position: relative; }
+
+#prompt {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 0.5px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--sys-label);
+  font-size: 13px;
+  font-family: inherit;
+  resize: none;
+  height: 110px;
+  line-height: 1.55;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  user-select: text;
+}
+
+#prompt:focus {
+  outline: none;
+  border-color: var(--sys-blue);
+  background: rgba(10, 132, 255, 0.05);
+  box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.15);
+}
+#prompt::placeholder { color: var(--sys-label4); }
+
+/* ─── Generate button ────────────────────────────────── */
+.generate-btn {
+  width: 100%;
+  height: 44px;
+  background: var(--sys-blue);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: -0.1px;
+  transition: background 0.15s, transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.15s, opacity 0.15s;
+  box-shadow: 0 2px 12px rgba(10, 132, 255, 0.35), 0 1px 3px rgba(0,0,0,0.3);
+  -webkit-app-region: no-drag;
+}
+.generate-btn:hover:not(:disabled) {
+  background: var(--sys-blue-hover);
+  box-shadow: 0 4px 20px rgba(10, 132, 255, 0.5);
+  transform: translateY(-1px);
+}
+.generate-btn:active:not(:disabled) {
+  transform: scale(0.98);
+  background: var(--sys-blue-press);
+}
+.generate-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.gen-spinner {
+  width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: none;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Examples dropdown */
+.examples-dropdown {
+  position: fixed;
+  background: rgba(28, 28, 30, 0.98);
+  backdrop-filter: blur(24px);
+  border: 0.5px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+  z-index: 999;
+  width: 260px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 0.5px rgba(0,0,0,0.5);
+  display: none;
+}
+.examples-dropdown.open { display: block; animation: pop-in 0.18s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.92) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.ex-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--sys-label);
+  transition: background 0.1s;
+  line-height: 1.3;
+}
+.ex-item:hover { background: rgba(255,255,255,0.08); }
+.ex-item .ex-icon { font-size: 15px; flex-shrink: 0; }
+
+/* ─── Main workspace ─────────────────────────────────── */
+.workspace {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ─── 3D Viewport ────────────────────────────────────── */
+.viewport {
+  flex: 1;
+  position: relative;
+  background: #080810;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.viewport canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Viewport empty state */
+.vp-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.vp-empty-icon {
+  font-size: 64px;
+  opacity: 0.08;
+  filter: saturate(0);
+}
+
+.vp-empty-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: rgba(235,235,245,0.25);
+  letter-spacing: -0.2px;
+}
+
+.vp-empty-sub {
+  font-size: 12.5px;
+  color: rgba(235,235,245,0.12);
+}
+
+/* Viewport toolbar (top-right) */
+.vp-toolbar {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.vp-toolbar.visible { opacity: 1; }
+
+.vp-btn {
+  background: rgba(15, 15, 20, 0.75);
+  backdrop-filter: blur(10px);
+  border: 0.5px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-sm);
+  color: var(--sys-label2);
+  font-size: 12px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: inherit;
+}
+.vp-btn:hover { background: rgba(40, 40, 50, 0.9); color: var(--sys-label); }
+.vp-btn.on { color: var(--sys-blue); }
+
+/* Viewport status badge (top-left) */
+.vp-status {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: none;
+}
+
+.vp-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(15, 15, 20, 0.80);
+  backdrop-filter: blur(10px);
+  border: 0.5px solid rgba(255,255,255,0.10);
+}
+.vp-badge.ok  { color: var(--sys-green); }
+.vp-badge.warn { color: var(--sys-orange); }
+
+/* Viewport hint (bottom) */
+.vp-hint {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 11.5px;
+  color: rgba(235,235,245,0.20);
+  background: rgba(15, 15, 20, 0.70);
+  backdrop-filter: blur(8px);
+  padding: 4px 12px;
+  border-radius: 20px;
+  pointer-events: none;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.vp-hint.visible { opacity: 1; }
+
+/* Generating overlay */
+.vp-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 16, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.vp-loading.active { opacity: 1; pointer-events: all; }
+
+.vp-loading-ring {
+  width: 44px; height: 44px;
+  border: 3px solid rgba(10, 132, 255, 0.2);
+  border-top-color: var(--sys-blue);
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.vp-loading-text {
+  font-size: 13px;
+  color: var(--sys-label2);
+  letter-spacing: -0.1px;
+}
+
+/* ─── Resize handle ──────────────────────────────────── */
+.resize-handle {
+  height: 5px;
+  background: transparent;
+  cursor: ns-resize;
+  flex-shrink: 0;
+  position: relative;
+  transition: background 0.15s;
+}
+.resize-handle::after {
+  content: '';
+  position: absolute;
+  inset: 2px 0;
+  background: var(--sys-sep);
+  transition: background 0.15s;
+}
+.resize-handle:hover::after { background: var(--sys-blue); }
+
+/* ─── Output panel ───────────────────────────────────── */
+.output-panel {
+  height: var(--panel-h);
+  background: var(--sys-bg2);
+  border-top: 0.5px solid var(--sys-sep);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-height: 48px;
+  transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Panel header */
+.panel-header {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 0.5px solid var(--sys-sep);
+  gap: 0;
+  flex-shrink: 0;
+  background: rgba(28, 28, 30, 0.6);
+}
+
+.panel-tabs { display: flex; gap: 0; flex: 1; }
+
+.ptab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--sys-label2);
+  font-size: 12.5px;
+  font-family: inherit;
+  padding: 11px 14px;
+  cursor: pointer;
+  transition: all 0.12s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: -0.5px;
+}
+.ptab-btn:hover { color: var(--sys-label); }
+.ptab-btn.active { color: var(--sys-label); border-bottom-color: var(--sys-blue); font-weight: 500; }
+
+.panel-tag {
+  background: rgba(48, 209, 88, 0.15);
+  border: 0.5px solid rgba(48, 209, 88, 0.3);
+  color: var(--sys-green);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.panel-actions { display: flex; gap: 6px; }
+
+.p-action-btn {
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.10);
+  border-radius: var(--radius-sm);
+  color: var(--sys-label2);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.p-action-btn:hover { background: rgba(255,255,255,0.11); color: var(--sys-label); }
+.p-action-btn.accent { color: var(--sys-blue); border-color: rgba(10,132,255,0.35); }
+.p-action-btn.accent:hover { background: rgba(10,132,255,0.12); }
+.p-action-btn.collapse-btn { color: var(--sys-label3); }
+
+/* Panel content */
+.ptab-content { display: none; flex: 1; overflow: auto; min-height: 0; }
+.ptab-content.active { display: flex; flex-direction: column; }
+
+/* Code view */
+.code-wrapper {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.code-wrapper pre { margin: 0; height: 100%; }
+.code-wrapper code {
+  font-size: 12.5px !important;
+  line-height: 1.65 !important;
+  font-family: 'SF Mono', 'JetBrains Mono', 'Fira Code', 'Consolas', monospace !important;
+  display: block;
+  height: 100%;
+}
+.hljs { background: transparent !important; padding: 16px 18px !important; }
+
+/* Explanation view */
+.explanation-wrap {
+  padding: 18px;
+  flex: 1;
+  overflow: auto;
+}
+.explanation-text {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--sys-label);
+}
+.model-meta {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 0.5px solid var(--sys-sep);
+  flex-wrap: wrap;
+}
+.meta-item { display: flex; flex-direction: column; gap: 3px; }
+.meta-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sys-label3); font-weight: 600; }
+.meta-val { font-size: 13px; color: var(--sys-label); font-weight: 500; }
+
+/* Empty panel state */
+.panel-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--sys-label4);
+  font-size: 13px;
+  gap: 8px;
+}
+
+/* ─── Keyframe animations ────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.fade-up { animation: fade-up 0.28s cubic-bezier(0.4, 0, 0.2, 1) both; }
+  </style>
+</head>
+<body>
+
+<!-- ── Titlebar ─────────────────────────────────────────── -->
+<div class="titlebar" id="titlebar">
+  <!-- Invisible drag layer behind everything -->
+  <div class="titlebar-drag" id="titlebar-drag"></div>
+
+  <div class="traffic-lights">
+    <button class="tl tl-close"    title="Close"    onclick="winClose()"></button>
+    <button class="tl tl-minimize" title="Minimize"  onclick="winMinimize()"></button>
+    <button class="tl tl-maximize" title="Maximize"  onclick="winMaximize()"></button>
+  </div>
+
+  <div class="titlebar-center">
+    <span class="titlebar-icon">🔷</span>
+    <span class="titlebar-title">Forge 3D</span>
+    <span class="titlebar-subtitle" id="title-model-name"></span>
+  </div>
+
+  <div class="titlebar-actions">
+    <button class="tb-btn active" id="sidebar-toggle-btn" title="Toggle Sidebar" onclick="toggleSidebar()">⬡</button>
+    <button class="tb-btn" title="Download .py" id="tb-dl-scad" onclick="dl('py')" style="display:none">↓ .py</button>
+    <button class="tb-btn" title="Download .stl"  id="tb-dl-stl"  onclick="dl('stl')"  style="display:none">↓ STL</button>
+  </div>
+</div>
+
+<!-- ── App shell ─────────────────────────────────────────── -->
+<div class="app-shell">
+
+  <!-- ── Sidebar ───────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+      <div class="sidebar-scroll">
+
+        <!-- Provider segmented control -->
+        <div>
+          <div class="section-label">AI Provider</div>
+          <div class="seg-wrap">
+            <button class="seg-btn active" data-p="anthropic" onclick="selectProvider(this)">
+              <span class="seg-icon">🟠</span>Anthropic
+            </button>
+            <button class="seg-btn" data-p="openai" onclick="selectProvider(this)">
+              <span class="seg-icon">🟢</span>OpenAI
+            </button>
+            <button class="seg-btn" data-p="openrouter" onclick="selectProvider(this)">
+              <span class="seg-icon">🟣</span>Router
+            </button>
+            <button class="seg-btn" data-p="azure" onclick="selectProvider(this)">
+              <span class="seg-icon">🔵</span>Azure
+            </button>
+            <button class="seg-btn" data-p="local" onclick="selectProvider(this)">
+              <span class="seg-icon">💻</span>Local
+            </button>
+          </div>
+        </div>
+
+        <!-- Settings -->
+        <div>
+          <div class="section-label">Settings</div>
+
+          <!-- Anthropic -->
+          <div class="settings-panel active" id="sp-anthropic">
+            <div class="field-group">
+              <label class="field-label">API Key</label>
+              <input class="field-input" type="password" id="anthropic-key" placeholder="sk-ant-api03-...">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Model</label>
+              <select class="field-select" id="anthropic-model">
+                <option value="claude-opus-4-7">Claude Opus 4.7</option>
+                <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
+                <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- OpenAI -->
+          <div class="settings-panel" id="sp-openai">
+            <div class="field-group">
+              <label class="field-label">API Key</label>
+              <input class="field-input" type="password" id="openai-key" placeholder="sk-...">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Model</label>
+              <select class="field-select" id="openai-model">
+                <option value="gpt-4o" selected>GPT-4o</option>
+                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                <option value="gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="o1">o1</option>
+                <option value="o3-mini">o3-mini</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- OpenRouter -->
+          <div class="settings-panel" id="sp-openrouter">
+            <div class="field-group">
+              <label class="field-label">API Key</label>
+              <input class="field-input" type="password" id="openrouter-key" placeholder="sk-or-...">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Model ID</label>
+              <input class="field-input" type="text" id="openrouter-model" placeholder="anthropic/claude-3.5-sonnet">
+            </div>
+            <p class="hint">Browse at <a href="#" onclick="return false">openrouter.ai/models</a></p>
+          </div>
+
+          <!-- Azure -->
+          <div class="settings-panel" id="sp-azure">
+            <div class="field-group">
+              <label class="field-label">API Key</label>
+              <input class="field-input" type="password" id="azure-key" placeholder="Azure API key">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Endpoint</label>
+              <input class="field-input" type="text" id="azure-endpoint" placeholder="https://....openai.azure.com">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Deployment</label>
+              <input class="field-input" type="text" id="azure-deployment" placeholder="gpt-4o">
+            </div>
+            <div class="field-group">
+              <label class="field-label">API Version</label>
+              <input class="field-input" type="text" id="azure-version" placeholder="2024-02-01">
+            </div>
+          </div>
+
+          <!-- Local LLM -->
+          <div class="settings-panel" id="sp-local">
+            <div class="field-group">
+              <label class="field-label">Ollama URL</label>
+              <input class="field-input" type="text" id="local-url" placeholder="http://localhost:11434">
+            </div>
+            <div class="field-group">
+              <label class="field-label">Model</label>
+              <input class="field-input" type="text" id="local-model" placeholder="llama3.2">
+            </div>
+            <p class="hint">Run <code>ollama pull llama3.2</code> first</p>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <!-- Prompt -->
+        <div class="prompt-section">
+          <div class="prompt-header">
+            <div class="section-label" style="margin:0">Describe your model</div>
+            <div style="position:relative">
+              <button class="examples-btn" id="examples-btn" onclick="toggleExamples()">💡 Examples</button>
+            </div>
+          </div>
+          <textarea id="prompt" placeholder="E.g., a phone stand with 15° tilt, cable slot at the base, and rubber pad recesses…"></textarea>
+          <button class="generate-btn" id="gen-btn" onclick="generate()">
+            <div class="gen-spinner" id="gen-spinner"></div>
+            <span id="gen-label">Generate Model</span>
+          </button>
+        </div>
+
+      </div><!-- /sidebar-scroll -->
+    </div>
+  </aside>
+
+  <!-- ── Workspace ─────────────────────────────────────── -->
+  <div class="workspace">
+
+    <!-- 3D Viewport -->
+    <div class="viewport" id="viewport">
+      <!-- Empty state -->
+      <div class="vp-empty" id="vp-empty">
+        <div class="vp-empty-icon">🔷</div>
+        <div class="vp-empty-label">No model yet</div>
+        <div class="vp-empty-sub">Describe an object and click Generate</div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="vp-toolbar" id="vp-toolbar">
+        <button class="vp-btn" onclick="resetCam()">⟲ Reset</button>
+        <button class="vp-btn on" id="grid-btn" onclick="toggleGrid()">⊞ Grid</button>
+        <button class="vp-btn" id="wire-btn" onclick="toggleWire()">⬡ Wire</button>
+      </div>
+
+      <!-- Status badge -->
+      <div class="vp-status" id="vp-status"></div>
+
+      <!-- Hint -->
+      <div class="vp-hint" id="vp-hint">Drag to orbit · Scroll to zoom · Right-drag to pan</div>
+
+      <!-- Loading overlay -->
+      <div class="vp-loading" id="vp-loading">
+        <div class="vp-loading-ring"></div>
+        <div class="vp-loading-text">Generating your model…</div>
+      </div>
+    </div>
+
+    <!-- Resize handle -->
+    <div class="resize-handle" id="resize-handle"></div>
+
+    <!-- Output panel -->
+    <div class="output-panel" id="output-panel">
+      <div class="panel-header">
+        <div class="panel-tabs">
+          <button class="ptab-btn active" id="ptab-code-btn" onclick="switchPTab('code', this)">
+            Python Code <span class="panel-tag" id="code-tag" style="display:none">✓</span>
+          </button>
+          <button class="ptab-btn" id="ptab-info-btn" onclick="switchPTab('info', this)">
+            Details
+          </button>
+        </div>
+        <div class="panel-actions">
+          <button class="p-action-btn" id="pa-copy"  onclick="copyCode()" style="display:none">📋 Copy</button>
+          <button class="p-action-btn accent" id="pa-scad" onclick="dl('py')"  style="display:none">↓ .py</button>
+          <button class="p-action-btn accent" id="pa-stl"  onclick="dl('stl')"   style="display:none">↓ .stl</button>
+          <button class="p-action-btn collapse-btn" onclick="togglePanel()" id="collapse-btn">▼</button>
+        </div>
+      </div>
+
+      <div class="ptab-content active" id="ptab-code">
+        <div class="panel-empty" id="code-empty">✦ Generate a model to see the Python code</div>
+        <div class="code-wrapper" id="code-wrapper" style="display:none">
+          <pre><code class="language-cpp" id="code-el"></code></pre>
+        </div>
+      </div>
+
+      <div class="ptab-content" id="ptab-info">
+        <div class="explanation-wrap" id="exp-wrap">
+          <div class="panel-empty">✦ Generate a model to see details</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /workspace -->
+</div><!-- /app-shell -->
+
+<!-- Examples dropdown (portal) -->
+<div class="examples-dropdown" id="ex-drop">
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">📱</span>Phone stand, 15° tilt, cable slot at base</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">🌵</span>Round succulent pot, 80 mm wide, drainage holes and saucer</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">🔑</span>Wall-mounted key holder, 5 hooks, 200 mm, mounting holes</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">⚙️</span>Parametric spur gear, 20 teeth, module 2, 10 mm thick</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">📦</span>Snap-fit storage box with lid, 80×60×40 mm, 2 mm walls</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">🏷️</span>Nameplate reading "Hello World", 120 mm wide, two mount holes</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">🔌</span>Desk cable clip, fits 20 mm edge, holds 5 cables</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">🔩</span>M6 hex bolt and nut, 25 mm bolt length</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">🎮</span>Raspberry Pi 4 case with ventilation slots and camera mount</div>
+  <div class="ex-item" onclick="useEx(this)"><span class="ex-icon">💡</span>Lampshade with geometric Voronoi cut-outs, 120 mm diameter</div>
+</div>
+
+<!-- Three.js importmap -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- Three.js module -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+let scene, cam, renderer, controls, mesh, grid;
+let ready = false;
+let showGrid = true;
+let showWire = false;
+
+function init() {
+  if (ready) return;
+  ready = true;
+
+  const vp = document.getElementById('viewport');
+
+  /* Scene */
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x080810);
+  scene.fog = new THREE.FogExp2(0x080810, 0.0005);
+
+  /* Grid */
+  grid = new THREE.GridHelper(600, 60, 0x14141e, 0x14141e);
+  scene.add(grid);
+
+  /* Camera */
+  cam = new THREE.PerspectiveCamera(42, vp.clientWidth / vp.clientHeight, 0.5, 8000);
+  cam.position.set(130, 100, 180);
+
+  /* Renderer */
+  renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(vp.clientWidth, vp.clientHeight);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  vp.appendChild(renderer.domElement);
+
+  /* Environment (IBL) */
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  scene.environment = env;
+  pmrem.dispose();
+
+  /* Lights */
+  scene.add(new THREE.AmbientLight(0xffffff, 0.2));
+
+  const key = new THREE.DirectionalLight(0xfff8f0, 1.6);
+  key.position.set(120, 200, 80);
+  key.castShadow = true;
+  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.camera.near = 0.5;
+  key.shadow.camera.far = 1200;
+  key.shadow.bias = -0.0003;
+  scene.add(key);
+
+  const fill = new THREE.DirectionalLight(0x8aaeff, 0.6);
+  fill.position.set(-200, 40, -150);
+  scene.add(fill);
+
+  const rim = new THREE.DirectionalLight(0x40c8ff, 0.35);
+  rim.position.set(0, -80, 220);
+  scene.add(rim);
+
+  /* Shadow plane */
+  const shadowGeo = new THREE.PlaneGeometry(600, 600);
+  const shadowMat = new THREE.ShadowMaterial({ opacity: 0.35 });
+  const shadowPlane = new THREE.Mesh(shadowGeo, shadowMat);
+  shadowPlane.rotation.x = -Math.PI / 2;
+  shadowPlane.receiveShadow = true;
+  scene.add(shadowPlane);
+
+  /* Controls */
+  controls = new OrbitControls(cam, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.055;
+  controls.minDistance = 5;
+  controls.maxDistance = 4000;
+  controls.mouseButtons = {
+    LEFT: THREE.MOUSE.ROTATE,
+    MIDDLE: THREE.MOUSE.DOLLY,
+    RIGHT: THREE.MOUSE.PAN,
+  };
+
+  /* Resize */
+  new ResizeObserver(() => {
+    const w = vp.clientWidth, h = vp.clientHeight;
+    if (!w || !h) return;
+    cam.aspect = w / h;
+    cam.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }).observe(vp);
+
+  /* Loop */
+  (function loop() {
+    requestAnimationFrame(loop);
+    controls.update();
+    renderer.render(scene, cam);
+  })();
+}
+
+function showMesh(geo) {
+  /* Remove old mesh */
+  if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); mesh.material.dispose(); }
+
+  geo.computeVertexNormals();   // smooth shading
+  geo.computeBoundingBox();
+  const box  = geo.boundingBox;
+  const size = new THREE.Vector3();
+  box.getSize(size);
+
+  /* Sit on ground (z=0 from Python, y-up in Three.js) */
+  geo.translate(-( box.min.x + size.x/2 ), -box.min.y, -( box.min.z + size.z/2 ));
+
+  const maxDim = Math.max(size.x, size.y, size.z);
+  const scale  = 120 / maxDim;
+
+  const mat = new THREE.MeshStandardMaterial({
+    color:            0x2979ff,
+    roughness:        0.22,
+    metalness:        0.06,
+    envMapIntensity:  1.2,
+    flatShading:      false,
+  });
+
+  mesh = new THREE.Mesh(geo, mat);
+  mesh.scale.setScalar(scale);
+  mesh.castShadow    = true;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+
+  /* Fit camera */
+  const d = maxDim * scale * 1.9;
+  cam.position.set(d * 0.7, d * 0.55, d);
+  controls.target.set(0, (size.y / 2) * scale, 0);
+  controls.update();
+
+  /* Reveal viewport UI */
+  const empty = document.getElementById('vp-empty');
+  empty.style.opacity = '0';
+  document.getElementById('vp-toolbar').classList.add('visible');
+  document.getElementById('vp-hint').classList.add('visible');
+  setTimeout(() => empty.style.display = 'none', 300);
+}
+
+function loadSTLb64(b64) {
+  /* Decode base-64 → ArrayBuffer → STLLoader — zero extra HTTP requests */
+  init();
+  const bin  = atob(b64);
+  const buf  = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+  const geo  = new STLLoader().parse(buf.buffer);
+  showMesh(geo);
+}
+
+/* legacy URL-based loader kept for compatibility */
+function loadSTL(url) {
+  init();
+  new STLLoader().load(url, showMesh,
+    undefined,
+    (err) => console.error('STL load error:', err));
+}
+
+/* Expose to app script */
+window._vp = {
+  init,
+  loadSTL,
+  loadSTLb64,
+  reset() {
+    if (!mesh) return;
+    const box = new THREE.Box3().setFromObject(mesh);
+    const sz  = new THREE.Vector3(); box.getSize(sz);
+    const d   = Math.max(sz.x, sz.y, sz.z) * 1.9;
+    cam.position.set(d * 0.7, d * 0.55, d);
+    controls.target.set(0, sz.y / 2, 0);
+    controls.update();
+  },
+  toggleGrid() { if (grid) { showGrid = !showGrid; grid.visible = showGrid; } return showGrid; },
+  toggleWire() {
+    if (!mesh) return;
+    showWire = !showWire;
+    mesh.material.wireframe = showWire;
+    return showWire;
+  }
+};
+</script>
+
+<!-- App logic -->
+<script>
+'use strict';
+
+/* ── State ─────────────────────────────────────────── */
+const STORE_KEY = 'forge3d-v1';
+let currentProvider = 'anthropic';
+let currentModelId  = null;
+let busy = false;
+let panelCollapsed = false;
+let sidebarOpen = true;
+
+/* ── localStorage ──────────────────────────────────── */
+const FIELDS = [
+  'anthropic-key','anthropic-model',
+  'openai-key','openai-model',
+  'openrouter-key','openrouter-model',
+  'azure-key','azure-endpoint','azure-deployment','azure-version',
+  'local-url','local-model',
+];
+
+const DEFAULTS = {
+  'anthropic-model':  'claude-sonnet-4-6',
+  'openai-model':     'gpt-4o',
+  'openrouter-model': 'anthropic/claude-3.5-sonnet',
+  'azure-version':    '2024-02-01',
+  'local-url':        'http://localhost:11434',
+  'local-model':      'llama3.2',
+};
+
+function loadSettings() {
+  const d = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+  if (d.provider) {
+    currentProvider = d.provider;
+    document.querySelectorAll('.seg-btn').forEach(b =>
+      b.classList.toggle('active', b.dataset.p === currentProvider));
+    document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+    const sp = document.getElementById('sp-' + currentProvider);
+    if (sp) sp.classList.add('active');
+  }
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = d[id] ?? DEFAULTS[id] ?? '';
+  });
+}
+
+function saveSettings() {
+  const d = { provider: currentProvider };
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) d[id] = el.value;
+  });
+  localStorage.setItem(STORE_KEY, JSON.stringify(d));
+}
+
+FIELDS.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', saveSettings);
+});
+
+/* ── Provider ──────────────────────────────────────── */
+function selectProvider(btn) {
+  currentProvider = btn.dataset.p;
+  document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('sp-' + currentProvider).classList.add('active');
+  saveSettings();
+}
+
+function getSettings() {
+  const g = id => (document.getElementById(id)?.value || '').trim();
+  switch (currentProvider) {
+    case 'anthropic':  return { api_key: g('anthropic-key'), model: g('anthropic-model') };
+    case 'openai':     return { api_key: g('openai-key'), model: g('openai-model') };
+    case 'openrouter': return { api_key: g('openrouter-key'), model: g('openrouter-model') };
+    case 'azure':      return { api_key: g('azure-key'), endpoint: g('azure-endpoint'),
+                                deployment: g('azure-deployment'), api_version: g('azure-version') };
+    case 'local':      return { base_url: g('local-url'), model: g('local-model') };
+  }
+}
+
+/* ── Examples ──────────────────────────────────────── */
+function toggleExamples() {
+  const dd  = document.getElementById('ex-drop');
+  const btn = document.getElementById('examples-btn');
+  const r   = btn.getBoundingClientRect();
+  if (dd.classList.contains('open')) {
+    dd.classList.remove('open');
+    return;
+  }
+  dd.style.left = r.left + 'px';
+  dd.style.top  = (r.bottom + 6) + 'px';
+  dd.classList.add('open');
+}
+
+function useEx(el) {
+  const text = el.querySelector('.ex-icon').nextSibling.textContent.trim();
+  document.getElementById('prompt').value = text;
+  document.getElementById('ex-drop').classList.remove('open');
+  document.getElementById('prompt').focus();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#examples-btn') && !e.target.closest('#ex-drop'))
+    document.getElementById('ex-drop').classList.remove('open');
+});
+
+/* ── Generate ──────────────────────────────────────── */
+async function generate() {
+  if (busy) return;
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) { document.getElementById('prompt').focus(); return; }
+
+  busy = true;
+  document.getElementById('gen-btn').disabled = true;
+  document.getElementById('gen-spinner').style.display = 'block';
+  document.getElementById('gen-label').textContent = 'Generating…';
+  document.getElementById('vp-loading').classList.add('active');
+
+  // Expand panel if collapsed
+  if (panelCollapsed) togglePanel();
+
+  try {
+    const res  = await fetch('/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, provider: currentProvider, settings: getSettings() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    showResults(data, prompt);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    busy = false;
+    document.getElementById('gen-btn').disabled = false;
+    document.getElementById('gen-spinner').style.display = 'none';
+    document.getElementById('gen-label').textContent = 'Generate Model';
+    document.getElementById('vp-loading').classList.remove('active');
+  }
+}
+
+/* ── Results ───────────────────────────────────────── */
+function showResults(data, prompt) {
+  currentModelId = data.model_id;
+
+  /* Title bar */
+  const words = prompt.split(' ').slice(0, 5).join(' ');
+  document.getElementById('title-model-name').textContent =
+    '— ' + words + (prompt.split(' ').length > 5 ? '…' : '');
+
+  /* Code panel — Python trimesh code */
+  document.getElementById('code-empty').style.display = 'none';
+  const cw = document.getElementById('code-wrapper');
+  cw.style.display = 'block';
+  const codeEl = document.getElementById('code-el');
+  codeEl.removeAttribute('data-highlighted');
+  codeEl.className = 'language-python';
+  codeEl.textContent = data.code || '';
+  hljs.highlightElement(codeEl);
+  document.getElementById('code-tag').style.display = 'inline-flex';
+
+  /* Panel actions */
+  document.getElementById('pa-copy').style.display = 'flex';
+  document.getElementById('pa-scad').style.display = 'flex';   // downloads .py now
+  document.getElementById('tb-dl-scad').style.display = 'flex';
+
+  /* Viewport status badge */
+  const statusEl = document.getElementById('vp-status');
+  statusEl.style.display = 'block';
+  if (data.ok) {
+    statusEl.innerHTML = `<div class="vp-badge ok">✅ ${data.faces.toLocaleString()} faces</div>`;
+  } else {
+    const short = (data.error_msg || 'Generation failed').split('\n').pop();
+    statusEl.innerHTML = `<div class="vp-badge warn">⚠ ${esc(short)}</div>`;
+  }
+
+  /* 3D preview — load inline base64 STL (no extra HTTP request → always works) */
+  if (data.ok && data.stl_b64 && window._vp) {
+    document.getElementById('pa-stl').style.display  = 'flex';
+    document.getElementById('tb-dl-stl').style.display = 'flex';
+    window._vp.loadSTLb64(data.stl_b64);
+  } else {
+    window._vp?.init();
+    if (!data.ok) {
+      document.getElementById('vp-empty').style.display = 'flex';
+      document.getElementById('vp-empty').style.opacity = '1';
+      document.querySelector('#vp-empty .vp-empty-label').textContent = 'Generation failed';
+      document.querySelector('#vp-empty .vp-empty-sub').textContent =
+        (data.error_msg || '').split('\n').slice(-1)[0];
+    }
+  }
+
+  /* Details tab */
+  const prov = {
+    anthropic:'Anthropic', openai:'OpenAI',
+    openrouter:'OpenRouter', azure:'Azure AI', local:'Local LLM'
+  };
+  const lines = (data.code || '').split('\n').length;
+  document.getElementById('exp-wrap').innerHTML = `
+    <div class="model-meta fade-up">
+      <div class="meta-item">
+        <div class="meta-label">Model ID</div>
+        <div class="meta-val">${data.model_id}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Faces</div>
+        <div class="meta-val">${data.faces ? data.faces.toLocaleString() : '—'}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Code lines</div>
+        <div class="meta-val">${lines}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Provider</div>
+        <div class="meta-val">${prov[currentProvider] || currentProvider}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">STL</div>
+        <div class="meta-val">${data.ok ? '✅ Ready' : '❌ Failed'}</div>
+      </div>
+    </div>
+    <div class="explanation-text fade-up">${esc(data.explanation || 'No additional notes.')}</div>
+    ${!data.ok ? `<div class="explanation-text fade-up" style="color:var(--sys-red);margin-top:12px;font-size:12px;font-family:monospace;white-space:pre-wrap">${esc(data.error_msg || '')}</div>` : ''}
+  `;
+}
+
+function showError(msg) {
+  document.getElementById('vp-status').style.display = 'block';
+  document.getElementById('vp-status').innerHTML = `<div class="vp-badge warn">❌ ${esc(msg)}</div>`;
+  document.getElementById('exp-wrap').innerHTML = `
+    <div class="explanation-text fade-up" style="color:var(--sys-red)">
+      <strong>Error:</strong> ${esc(msg)}
+    </div>`;
+}
+
+/* ── Panel tabs ────────────────────────────────────── */
+function switchPTab(name, btn) {
+  document.querySelectorAll('.ptab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.ptab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('ptab-' + name).classList.add('active');
+}
+
+/* ── Panel collapse ────────────────────────────────── */
+function togglePanel() {
+  panelCollapsed = !panelCollapsed;
+  const panel = document.getElementById('output-panel');
+  const btn   = document.getElementById('collapse-btn');
+  if (panelCollapsed) {
+    panel.style.height = '44px';
+    btn.textContent = '▲';
+  } else {
+    panel.style.height = 'var(--panel-h)';
+    btn.textContent = '▼';
+  }
+}
+
+/* ── Sidebar toggle ────────────────────────────────── */
+function toggleSidebar() {
+  sidebarOpen = !sidebarOpen;
+  document.getElementById('sidebar').classList.toggle('hidden', !sidebarOpen);
+  document.getElementById('sidebar-toggle-btn').classList.toggle('active', sidebarOpen);
+}
+
+/* ── Resize handle ─────────────────────────────────── */
+(function() {
+  const handle = document.getElementById('resize-handle');
+  const panel  = document.getElementById('output-panel');
+  let dragging = false, startY = 0, startH = 0;
+
+  handle.addEventListener('mousedown', e => {
+    dragging = true;
+    startY = e.clientY;
+    startH = panel.offsetHeight;
+    document.body.style.cursor = 'ns-resize';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const delta = startY - e.clientY;
+    const newH  = Math.max(48, Math.min(startH + delta, window.innerHeight * 0.7));
+    panel.style.height = newH + 'px';
+    if (newH > 48) panelCollapsed = false;
+  });
+
+  document.addEventListener('mouseup', () => {
+    dragging = false;
+    document.body.style.cursor = '';
+  });
+})();
+
+/* ── Viewport controls ─────────────────────────────── */
+function resetCam()    { window._vp?.reset(); }
+
+function toggleGrid() {
+  const on = window._vp?.toggleGrid();
+  const btn = document.getElementById('grid-btn');
+  btn.classList.toggle('on', !!on);
+}
+
+function toggleWire() {
+  const on = window._vp?.toggleWire();
+  const btn = document.getElementById('wire-btn');
+  btn.classList.toggle('on', !!on);
+}
+
+/* ── Actions ───────────────────────────────────────── */
+function copyCode() {
+  const code = document.getElementById('code-el').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = document.getElementById('pa-copy');
+    btn.textContent = '✅ Copied';
+    setTimeout(() => btn.textContent = '📋 Copy', 2000);
+  });
+}
+
+function dl(type) {
+  if (!currentModelId) return;
+  const a = document.createElement('a');
+  a.href = `/download/${currentModelId}/${type}`;
+  a.click();
+}
+
+/* ── Window controls ───────────────────────────────── */
+function winClose()    { window.pywebview?.api?.close(); }
+function winMinimize() { window.pywebview?.api?.minimize(); }
+function winMaximize() { window.pywebview?.api?.toggle_maximize(); }
+
+/* ── Titlebar drag ─────────────────────────────────── */
+(function () {
+  const dragEl = document.getElementById('titlebar-drag');
+  if (!dragEl) return;
+
+  let dragging = false;
+  let rafPending = false;
+  let latestMX = 0, latestMY = 0;
+
+  dragEl.addEventListener('mousedown', async (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    dragging = true;
+    // Record window position offset on Python side once
+    await window.pywebview?.api?.begin_drag(e.screenX, e.screenY);
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    latestMX = e.screenX;
+    latestMY = e.screenY;
+    // Throttle to one Python call per animation frame
+    if (rafPending) return;
+    rafPending = true;
+    requestAnimationFrame(() => {
+      rafPending = false;
+      window.pywebview?.api?.do_drag(latestMX, latestMY);
+    });
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    window.pywebview?.api?.end_drag();
+  });
+})();
+
+/* ── Keyboard ──────────────────────────────────────── */
+document.getElementById('prompt').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generate();
+});
+
+/* ── Utils ─────────────────────────────────────────── */
+function esc(s) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(s || '')));
+  return d.innerHTML;
+}
+
+/* ── Init ──────────────────────────────────────────── */
+loadSettings();
+/* Pre-init Three.js after a tick so the layout is settled */
+setTimeout(() => window._vp?.init(), 200);
+</script>
+</body>
+</html>

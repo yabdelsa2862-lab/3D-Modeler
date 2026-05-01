@@ -1,0 +1,1336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Model Generator</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d1117;
+      --surface: #161b22;
+      --surface2: #21262d;
+      --border: #30363d;
+      --border2: #21262d;
+      --text: #c9d1d9;
+      --text-muted: #8b949e;
+      --text-bright: #f0f6fc;
+      --accent: #58a6ff;
+      --accent-bg: #1f6feb22;
+      --accent-border: #1f6feb66;
+      --green: #3fb950;
+      --green-bg: #3fb95022;
+      --green-border: #3fb95066;
+      --orange: #d29922;
+      --orange-bg: #e3b34122;
+      --orange-border: #e3b34166;
+      --red: #f85149;
+      --red-bg: #f8514922;
+      --red-border: #f8514966;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+
+    .header-logo {
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-bright);
+      letter-spacing: -0.2px;
+    }
+
+    .header-badge {
+      background: var(--accent-bg);
+      border: 1px solid var(--accent-border);
+      color: var(--accent);
+      padding: 2px 9px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+
+    .header-hint {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-hint kbd {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: grid;
+      grid-template-columns: 268px 1fr;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-section {
+      padding: 14px 14px;
+      border-bottom: 1px solid var(--border2);
+    }
+
+    .sidebar-section:last-child { border-bottom: none; flex: 1; }
+
+    .section-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Provider buttons */
+    .provider-list { display: flex; flex-direction: column; gap: 3px; }
+
+    .provider-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13.5px;
+      text-align: left;
+      transition: all 0.12s;
+      width: 100%;
+    }
+
+    .provider-btn:hover { background: var(--surface2); color: var(--text); }
+
+    .provider-btn.active {
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
+      color: var(--accent);
+      font-weight: 500;
+    }
+
+    .provider-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    /* Form fields */
+    .form-group { margin-bottom: 11px; }
+    .form-group:last-child { margin-bottom: 0; }
+
+    .form-group label {
+      display: block;
+      font-size: 11.5px;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 7px 9px;
+      color: var(--text);
+      font-size: 12.5px;
+      transition: border-color 0.12s;
+      appearance: none;
+    }
+
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238b949e' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
+      padding-right: 28px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #1f6feb;
+      box-shadow: 0 0 0 3px #1f6feb1a;
+    }
+
+    .form-group input::placeholder { color: #484f58; }
+
+    .settings-panel { display: none; }
+    .settings-panel.active { display: block; }
+
+    .hint-text {
+      font-size: 11.5px;
+      color: var(--text-muted);
+      line-height: 1.55;
+      margin-top: 8px;
+    }
+
+    .hint-text a { color: var(--accent); text-decoration: none; }
+    .hint-text code {
+      background: var(--bg);
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+    }
+
+    /* ── Main ── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    /* Prompt area */
+    .prompt-area {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border2);
+      flex-shrink: 0;
+      background: var(--surface);
+    }
+
+    .prompt-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .prompt-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-bright);
+    }
+
+    .prompt-actions { display: flex; gap: 8px; align-items: center; }
+
+    .examples-wrapper { position: relative; }
+
+    .examples-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: all 0.12s;
+    }
+
+    .examples-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .examples-dropdown {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      padding: 6px;
+      z-index: 200;
+      min-width: 290px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+    }
+
+    .example-item {
+      padding: 7px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12.5px;
+      color: var(--text);
+      transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .example-item:hover { background: var(--surface2); color: var(--text-bright); }
+
+    .prompt-row { display: flex; gap: 10px; }
+
+    #prompt {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 13px;
+      color: var(--text);
+      font-size: 13.5px;
+      font-family: inherit;
+      resize: none;
+      height: 76px;
+      line-height: 1.5;
+      transition: border-color 0.12s;
+    }
+
+    #prompt:focus {
+      outline: none;
+      border-color: #1f6feb;
+      box-shadow: 0 0 0 3px #1f6feb1a;
+    }
+
+    #prompt::placeholder { color: #484f58; }
+
+    .generate-btn {
+      background: linear-gradient(135deg, #238636, #1a7431);
+      border: 1px solid #2ea043;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13.5px;
+      font-weight: 600;
+      padding: 0 18px;
+      cursor: pointer;
+      min-width: 116px;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 2px 8px rgba(35,134,54,0.3);
+    }
+
+    .generate-btn:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2ea043, #238636);
+      box-shadow: 0 4px 12px rgba(35,134,54,0.4);
+      transform: translateY(-1px);
+    }
+
+    .generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .spinner {
+      width: 15px;
+      height: 15px;
+      border: 2px solid #ffffff44;
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      display: none;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Results ── */
+    .results {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: var(--text-muted);
+      padding: 40px;
+    }
+
+    .empty-icon { font-size: 60px; opacity: 0.18; }
+
+    .empty-state h3 { font-size: 17px; color: var(--text); }
+
+    .empty-state p {
+      font-size: 13px;
+      text-align: center;
+      max-width: 380px;
+      line-height: 1.65;
+    }
+
+    .empty-tips {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 6px;
+    }
+
+    .tip-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    /* Results content */
+    .results-content {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .results-content.visible { display: flex; }
+
+    .results-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border2);
+      padding: 0 18px;
+      flex-shrink: 0;
+      background: var(--surface);
+      gap: 2px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: all 0.12s;
+      margin-bottom: -1px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      color: var(--text-bright);
+      border-bottom-color: var(--accent);
+    }
+
+    .tab-badge {
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: var(--green);
+      border-radius: 10px;
+      padding: 0 6px;
+      font-size: 10px;
+      font-weight: 600;
+    }
+
+    .tab-content {
+      display: none;
+      flex: 1;
+      overflow: auto;
+      padding: 14px 18px;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 0;
+    }
+
+    .tab-content.active { display: flex; }
+
+    /* Code tab */
+    .code-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .compile-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .compile-badge.success {
+      background: var(--green-bg);
+      border: 1px solid var(--green-border);
+      color: var(--green);
+    }
+
+    .compile-badge.warning {
+      background: var(--orange-bg);
+      border: 1px solid var(--orange-border);
+      color: var(--orange);
+    }
+
+    .toolbar-actions { display: flex; gap: 7px; }
+
+    .action-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 12px;
+      padding: 5px 11px;
+      cursor: pointer;
+      transition: all 0.12s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .action-btn:hover { background: var(--border); }
+
+    .action-btn.primary {
+      background: var(--accent-bg);
+      border-color: var(--accent-border);
+      color: var(--accent);
+    }
+
+    .action-btn.primary:hover { background: #1f6feb33; }
+
+    .code-wrapper {
+      flex: 1;
+      overflow: auto;
+      border-radius: 8px;
+      border: 1px solid var(--border2);
+      background: var(--bg);
+      min-height: 0;
+    }
+
+    .code-wrapper pre { margin: 0 !important; border-radius: 8px !important; background: transparent !important; height: 100%; }
+    .code-wrapper pre code { font-size: 12.5px !important; line-height: 1.6 !important; }
+
+    /* Preview tab */
+    #viewer-container {
+      flex: 1;
+      background: #080c10;
+      border: 1px solid var(--border2);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      min-height: 300px;
+    }
+
+    #viewer-container canvas { display: block; width: 100% !important; height: 100% !important; }
+
+    .viewer-overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+    .viewer-overlay .ov-icon { font-size: 52px; opacity: 0.2; }
+    .viewer-overlay p { font-size: 13px; text-align: center; max-width: 300px; line-height: 1.55; }
+    .viewer-overlay a { color: var(--accent); pointer-events: all; }
+
+    .viewer-toolbar {
+      display: none;
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      gap: 6px;
+    }
+
+    .viewer-toolbar.visible { display: flex; }
+
+    .viewer-btn {
+      background: rgba(22, 27, 34, 0.85);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+      transition: all 0.12s;
+    }
+
+    .viewer-btn:hover { color: var(--text); background: rgba(33,38,45,0.9); }
+
+    .viewer-info {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: rgba(22, 27, 34, 0.75);
+      padding: 4px 10px;
+      border-radius: 6px;
+      backdrop-filter: blur(6px);
+    }
+
+    /* Explanation tab */
+    .explanation-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+      font-size: 13.5px;
+      line-height: 1.75;
+      color: var(--text);
+    }
+
+    .model-info {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 24px;
+    }
+
+    .info-item { display: flex; flex-direction: column; gap: 3px; }
+    .info-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .info-value { font-size: 13px; color: var(--text-bright); font-weight: 500; }
+
+    /* Error display */
+    .error-card {
+      margin: 18px;
+      background: var(--red-bg);
+      border: 1px solid var(--red-border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      color: #ff7b72;
+    }
+
+    .error-card strong { display: block; margin-bottom: 4px; }
+    .error-card pre { font-size: 12px; white-space: pre-wrap; color: #ffa198; margin-top: 6px; opacity: 0.85; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">🔷</div>
+  <h1>3D Model Generator</h1>
+  <span class="header-badge">AI-Powered</span>
+  <div class="header-hint">
+    Press <kbd>Ctrl</kbd>+<kbd>Enter</kbd> to generate
+  </div>
+</header>
+
+<!-- Main layout -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-section">
+      <div class="section-label">AI Provider</div>
+      <div class="provider-list">
+        <button class="provider-btn active" data-provider="anthropic" onclick="selectProvider(this)">
+          <div class="provider-icon" style="background:#d4700020; font-size:15px">🟠</div>
+          Anthropic
+        </button>
+        <button class="provider-btn" data-provider="openai" onclick="selectProvider(this)">
+          <div class="provider-icon" style="background:#10a37f20; font-size:15px">🟢</div>
+          OpenAI
+        </button>
+        <button class="provider-btn" data-provider="openrouter" onclick="selectProvider(this)">
+          <div class="provider-icon" style="background:#6e40c920; font-size:15px">🟣</div>
+          OpenRouter
+        </button>
+        <button class="provider-btn" data-provider="azure" onclick="selectProvider(this)">
+          <div class="provider-icon" style="background:#0078d420; font-size:15px">🔵</div>
+          Azure AI
+        </button>
+        <button class="provider-btn" data-provider="local" onclick="selectProvider(this)">
+          <div class="provider-icon" style="background:#58a6ff20; font-size:15px">💻</div>
+          Local LLM
+        </button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Settings</div>
+
+      <!-- Anthropic -->
+      <div id="settings-anthropic" class="settings-panel active">
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="anthropic-key" placeholder="sk-ant-..." autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <select id="anthropic-model">
+            <option value="claude-opus-4-7">Claude Opus 4.7 (Best)</option>
+            <option value="claude-sonnet-4-6" selected>Claude Sonnet 4.6</option>
+            <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 (Fast)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- OpenAI -->
+      <div id="settings-openai" class="settings-panel">
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="openai-key" placeholder="sk-..." autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <select id="openai-model">
+            <option value="gpt-4o" selected>GPT-4o</option>
+            <option value="gpt-4o-mini">GPT-4o Mini</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            <option value="o1">o1</option>
+            <option value="o3-mini">o3-mini</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- OpenRouter -->
+      <div id="settings-openrouter" class="settings-panel">
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="openrouter-key" placeholder="sk-or-..." autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Model ID</label>
+          <input type="text" id="openrouter-model" placeholder="anthropic/claude-3.5-sonnet">
+        </div>
+        <div class="hint-text">Browse models at <a href="https://openrouter.ai/models" target="_blank">openrouter.ai/models</a></div>
+      </div>
+
+      <!-- Azure -->
+      <div id="settings-azure" class="settings-panel">
+        <div class="form-group">
+          <label>API Key</label>
+          <input type="password" id="azure-key" placeholder="Azure API Key" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label>Endpoint URL</label>
+          <input type="text" id="azure-endpoint" placeholder="https://....openai.azure.com">
+        </div>
+        <div class="form-group">
+          <label>Deployment Name</label>
+          <input type="text" id="azure-deployment" placeholder="gpt-4o">
+        </div>
+        <div class="form-group">
+          <label>API Version</label>
+          <input type="text" id="azure-api-version" placeholder="2024-02-01">
+        </div>
+      </div>
+
+      <!-- Local LLM -->
+      <div id="settings-local" class="settings-panel">
+        <div class="form-group">
+          <label>Ollama Base URL</label>
+          <input type="text" id="local-url" placeholder="http://localhost:11434">
+        </div>
+        <div class="form-group">
+          <label>Model Name</label>
+          <input type="text" id="local-model" placeholder="llama3.2">
+        </div>
+        <div class="hint-text">
+          Requires <a href="https://ollama.com" target="_blank">Ollama</a> running locally.<br>
+          Pull a model: <code>ollama pull llama3.2</code><br>
+          Or try: <code>codellama</code>, <code>mistral</code>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- Prompt input -->
+    <div class="prompt-area">
+      <div class="prompt-top">
+        <span class="prompt-label">Describe your 3D model</span>
+        <div class="prompt-actions">
+          <div class="examples-wrapper">
+            <button class="examples-btn" id="examples-btn" onclick="toggleExamples()">💡 Examples</button>
+            <div class="examples-dropdown" id="examples-dropdown">
+              <div class="example-item" onclick="useExample(this)">📱 A phone stand, 15° angle, cable slot at base</div>
+              <div class="example-item" onclick="useExample(this)">🌵 Round succulent pot, 80mm wide, drainage holes + saucer</div>
+              <div class="example-item" onclick="useExample(this)">🔑 Wall-mounted key holder, 5 hooks, 200mm wide, mounting holes</div>
+              <div class="example-item" onclick="useExample(this)">⚙️ Parametric spur gear, 20 teeth, module 2, 10mm thick</div>
+              <div class="example-item" onclick="useExample(this)">📦 Snap-fit storage box with lid, 80×60×40mm, 2mm walls</div>
+              <div class="example-item" onclick="useExample(this)">🏷️ Nameplate reading "Hello World", 120mm wide, two mounting holes</div>
+              <div class="example-item" onclick="useExample(this)">🔌 Desk cable organizer clip, attaches to 20mm desk edge, holds 5 cables</div>
+              <div class="example-item" onclick="useExample(this)">🔩 M6 hex bolt and matching nut, 25mm bolt length</div>
+              <div class="example-item" onclick="useExample(this)">🧲 Magnetic business card holder, 90×55mm base, 30° angle</div>
+              <div class="example-item" onclick="useExample(this)">🎮 Raspberry Pi 4 case with ventilation slots and camera mount</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="prompt-row">
+        <textarea id="prompt" placeholder="E.g., 'A parametric phone stand with 15° lean, a cable management slot at the bottom, and rubber pad recesses on the base...'"></textarea>
+        <button class="generate-btn" id="generate-btn" onclick="generate()">
+          <div class="spinner" id="spinner"></div>
+          <span id="btn-text">⚡ Generate</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div class="results" id="results">
+
+      <!-- Empty state -->
+      <div class="empty-state" id="empty-state">
+        <div class="empty-icon">🔷</div>
+        <h3>Ready to Generate</h3>
+        <p>Describe the 3D object you want to print. The AI will generate OpenSCAD code optimized for FDM printing, then compile it to STL if OpenSCAD is installed.</p>
+        <div class="empty-tips">
+          <span class="tip-chip">✅ Manifold geometry</span>
+          <span class="tip-chip">✅ Print-ready dimensions</span>
+          <span class="tip-chip">✅ Parametric design</span>
+          <span class="tip-chip">✅ STL + SCAD export</span>
+        </div>
+      </div>
+
+      <!-- Results content -->
+      <div class="results-content" id="results-content">
+        <div class="results-tabs">
+          <button class="tab-btn active" onclick="switchTab('code', this)">
+            📝 OpenSCAD Code
+          </button>
+          <button class="tab-btn" onclick="switchTab('preview', this)" id="preview-tab">
+            🔷 3D Preview
+          </button>
+          <button class="tab-btn" onclick="switchTab('explanation', this)">
+            💬 Explanation
+          </button>
+        </div>
+
+        <!-- Code tab -->
+        <div class="tab-content active" id="tab-code">
+          <div class="code-toolbar">
+            <div id="compile-badge"></div>
+            <div class="toolbar-actions">
+              <button class="action-btn" onclick="copyCode()">📋 Copy Code</button>
+              <button class="action-btn" onclick="downloadFile('scad')">⬇ Download .scad</button>
+              <button class="action-btn primary" id="stl-dl-btn" onclick="downloadFile('stl')" style="display:none">⬇ Download .stl</button>
+            </div>
+          </div>
+          <div class="code-wrapper">
+            <pre><code class="language-cpp" id="code-display"></code></pre>
+          </div>
+        </div>
+
+        <!-- Preview tab -->
+        <div class="tab-content" id="tab-preview">
+          <div id="viewer-container">
+            <div class="viewer-overlay" id="viewer-overlay">
+              <div class="ov-icon">🔷</div>
+              <p id="viewer-msg">Generate a model to see the 3D preview here.</p>
+            </div>
+            <div class="viewer-toolbar" id="viewer-toolbar">
+              <button class="viewer-btn" onclick="resetView()">⟲ Reset</button>
+              <button class="viewer-btn" onclick="toggleWireframe()">⬡ Wireframe</button>
+              <button class="viewer-btn" onclick="toggleGrid()">⊞ Grid</button>
+            </div>
+            <div class="viewer-info" id="viewer-info" style="display:none">
+              Drag to rotate · Scroll to zoom · Right-drag to pan
+            </div>
+          </div>
+        </div>
+
+        <!-- Explanation tab -->
+        <div class="tab-content" id="tab-explanation">
+          <div class="model-info" id="model-info"></div>
+          <div class="explanation-box" id="explanation-display"></div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Three.js import map -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+  }
+}
+</script>
+
+<!-- Three.js viewer (module) -->
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+let scene, camera, renderer, controls, mesh, grid;
+let wireframe = false;
+let gridVisible = true;
+let initialized = false;
+
+function initViewer() {
+  if (initialized) return;
+  initialized = true;
+
+  const container = document.getElementById('viewer-container');
+  const w = container.clientWidth || 600;
+  const h = container.clientHeight || 400;
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x080c10);
+
+  grid = new THREE.GridHelper(300, 30, 0x1a2030, 0x1a2030);
+  scene.add(grid);
+
+  camera = new THREE.PerspectiveCamera(45, w / h, 0.1, 10000);
+  camera.position.set(120, 90, 160);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(w, h);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  container.appendChild(renderer.domElement);
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xffffff, 0.5);
+  scene.add(ambient);
+
+  const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+  sun.position.set(150, 200, 100);
+  sun.castShadow = true;
+  scene.add(sun);
+
+  const fill = new THREE.DirectionalLight(0x6688cc, 0.4);
+  fill.position.set(-100, -60, -150);
+  scene.add(fill);
+
+  const rim = new THREE.DirectionalLight(0xffeebb, 0.25);
+  rim.position.set(0, -100, 100);
+  scene.add(rim);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.06;
+  controls.minDistance = 10;
+  controls.maxDistance = 3000;
+
+  const ro = new ResizeObserver(() => {
+    const w2 = container.clientWidth;
+    const h2 = container.clientHeight;
+    if (w2 && h2) {
+      camera.aspect = w2 / h2;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w2, h2);
+    }
+  });
+  ro.observe(container);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    renderer.render(scene, camera);
+  }
+  animate();
+}
+
+window._viewer = {
+  init: initViewer,
+
+  loadSTL(url) {
+    initViewer();
+    const loader = new STLLoader();
+    loader.load(url, (geo) => {
+      if (mesh) { scene.remove(mesh); mesh.geometry.dispose(); }
+
+      geo.computeBoundingBox();
+      const box = geo.boundingBox;
+      const center = new THREE.Vector3();
+      box.getCenter(center);
+      const size = new THREE.Vector3();
+      box.getSize(size);
+
+      geo.translate(-center.x, -center.y + size.y / 2, -center.z);
+
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const scale = 100 / maxDim;
+
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0x4d9de0,
+        specular: 0x223344,
+        shininess: 40,
+        side: THREE.DoubleSide,
+      });
+
+      mesh = new THREE.Mesh(geo, mat);
+      mesh.scale.setScalar(scale);
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      scene.add(mesh);
+
+      const dist = maxDim * scale * 1.8;
+      camera.position.set(dist * 0.8, dist * 0.7, dist);
+      controls.target.set(0, (size.y / 2) * scale, 0);
+      controls.update();
+
+      document.getElementById('viewer-overlay').style.display = 'none';
+      document.getElementById('viewer-toolbar').classList.add('visible');
+      document.getElementById('viewer-info').style.display = 'block';
+    }, undefined, (err) => {
+      console.error('STL load error:', err);
+    });
+  },
+
+  resetView() {
+    if (!mesh) return;
+    const box = new THREE.Box3().setFromObject(mesh);
+    const size = new THREE.Vector3();
+    box.getSize(size);
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const dist = maxDim * 1.8;
+    camera.position.set(dist * 0.8, dist * 0.7, dist);
+    controls.target.set(0, size.y / 2, 0);
+    controls.update();
+  },
+
+  toggleWireframe() {
+    if (!mesh) return;
+    wireframe = !wireframe;
+    mesh.material.wireframe = wireframe;
+  },
+
+  toggleGrid() {
+    if (!grid) return;
+    gridVisible = !gridVisible;
+    grid.visible = gridVisible;
+  }
+};
+</script>
+
+<!-- App logic -->
+<script>
+const STORAGE_KEY = '3d-gen-v1';
+let currentProvider = 'anthropic';
+let currentModelId = null;
+let generating = false;
+
+// ── Persistence ───────────────────────────────────────────────────────────
+
+const FIELDS = [
+  'anthropic-key', 'anthropic-model',
+  'openai-key', 'openai-model',
+  'openrouter-key', 'openrouter-model',
+  'azure-key', 'azure-endpoint', 'azure-deployment', 'azure-api-version',
+  'local-url', 'local-model',
+];
+
+const DEFAULTS = {
+  'anthropic-model': 'claude-sonnet-4-6',
+  'openai-model': 'gpt-4o',
+  'openrouter-model': 'anthropic/claude-3.5-sonnet',
+  'azure-api-version': '2024-02-01',
+  'local-url': 'http://localhost:11434',
+  'local-model': 'llama3.2',
+};
+
+function loadSettings() {
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.value = saved[id] ?? DEFAULTS[id] ?? '';
+  });
+  if (saved.provider) {
+    currentProvider = saved.provider;
+    document.querySelectorAll('.provider-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.provider === currentProvider);
+    });
+    document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+    const panel = document.getElementById('settings-' + currentProvider);
+    if (panel) panel.classList.add('active');
+  }
+}
+
+function saveSettings() {
+  const data = { provider: currentProvider };
+  FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) data[id] = el.value;
+  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+FIELDS.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('change', saveSettings);
+});
+
+// ── Provider switching ────────────────────────────────────────────────────
+
+function selectProvider(btn) {
+  currentProvider = btn.dataset.provider;
+  document.querySelectorAll('.provider-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('settings-' + currentProvider).classList.add('active');
+  saveSettings();
+}
+
+function getSettings() {
+  switch (currentProvider) {
+    case 'anthropic':
+      return { api_key: val('anthropic-key'), model: val('anthropic-model') };
+    case 'openai':
+      return { api_key: val('openai-key'), model: val('openai-model') };
+    case 'openrouter':
+      return { api_key: val('openrouter-key'), model: val('openrouter-model') };
+    case 'azure':
+      return {
+        api_key: val('azure-key'),
+        endpoint: val('azure-endpoint'),
+        deployment: val('azure-deployment'),
+        api_version: val('azure-api-version'),
+      };
+    case 'local':
+      return { base_url: val('local-url'), model: val('local-model') };
+  }
+}
+
+function val(id) { return (document.getElementById(id)?.value || '').trim(); }
+
+// ── Examples ──────────────────────────────────────────────────────────────
+
+function toggleExamples() {
+  const dd = document.getElementById('examples-dropdown');
+  dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+}
+
+function useExample(el) {
+  document.getElementById('prompt').value = el.textContent.replace(/^[^\w]*/, '').trim();
+  document.getElementById('examples-dropdown').style.display = 'none';
+  document.getElementById('prompt').focus();
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.examples-wrapper')) {
+    document.getElementById('examples-dropdown').style.display = 'none';
+  }
+});
+
+// ── Generate ──────────────────────────────────────────────────────────────
+
+async function generate() {
+  if (generating) return;
+  const prompt = document.getElementById('prompt').value.trim();
+  if (!prompt) {
+    document.getElementById('prompt').focus();
+    return;
+  }
+
+  generating = true;
+  document.getElementById('generate-btn').disabled = true;
+  document.getElementById('spinner').style.display = 'block';
+  document.getElementById('btn-text').textContent = 'Generating…';
+
+  // Hide empty state, show results area
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('results-content').classList.add('visible');
+  switchTab('code', document.querySelector('.tab-btn'));
+
+  // Reset code area to loading state
+  document.getElementById('code-display').textContent = '// Generating OpenSCAD code…';
+  document.getElementById('compile-badge').innerHTML = '';
+  document.getElementById('stl-dl-btn').style.display = 'none';
+  hljs.highlightElement(document.getElementById('code-display'));
+
+  try {
+    const res = await fetch('/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt,
+        provider: currentProvider,
+        settings: getSettings(),
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    showResults(data, prompt);
+  } catch (err) {
+    showError(err.message);
+  } finally {
+    generating = false;
+    document.getElementById('generate-btn').disabled = false;
+    document.getElementById('spinner').style.display = 'none';
+    document.getElementById('btn-text').textContent = '⚡ Generate';
+  }
+}
+
+// ── Results display ───────────────────────────────────────────────────────
+
+function showResults(data, prompt) {
+  currentModelId = data.model_id;
+
+  // Code
+  const codeEl = document.getElementById('code-display');
+  codeEl.removeAttribute('data-highlighted');
+  codeEl.textContent = data.scad_code;
+  hljs.highlightElement(codeEl);
+
+  // Compile badge
+  const badge = document.getElementById('compile-badge');
+  if (data.compiled) {
+    badge.innerHTML = '<span class="compile-badge success">✅ Compiled to STL</span>';
+  } else {
+    const msg = data.compile_message || 'OpenSCAD not found';
+    badge.innerHTML = `<span class="compile-badge warning">⚠️ ${esc(msg)}</span>`;
+  }
+
+  // STL download button
+  document.getElementById('stl-dl-btn').style.display = data.stl_available ? 'flex' : 'none';
+
+  // Preview tab
+  const previewTab = document.getElementById('preview-tab');
+  if (data.stl_available) {
+    previewTab.innerHTML = '🔷 3D Preview <span class="tab-badge">Ready</span>';
+    if (window._viewer) window._viewer.loadSTL(`/models/${data.model_id}.stl`);
+  } else {
+    previewTab.textContent = '🔷 3D Preview';
+    document.getElementById('viewer-overlay').style.display = 'flex';
+    document.getElementById('viewer-msg').innerHTML =
+      (data.compile_message || 'Install <a href="https://openscad.org" target="_blank">OpenSCAD</a> to enable 3D preview.');
+    document.getElementById('viewer-toolbar').classList.remove('visible');
+    document.getElementById('viewer-info').style.display = 'none';
+    if (window._viewer) window._viewer.init();
+  }
+
+  // Explanation
+  const lines = data.scad_code.split('\n').length;
+  document.getElementById('model-info').innerHTML = `
+    <div class="info-item"><span class="info-label">Model ID</span><span class="info-value">${data.model_id}</span></div>
+    <div class="info-item"><span class="info-label">Code Lines</span><span class="info-value">${lines}</span></div>
+    <div class="info-item"><span class="info-label">Provider</span><span class="info-value">${currentProvider}</span></div>
+    <div class="info-item"><span class="info-label">STL Export</span><span class="info-value">${data.stl_available ? '✅ Available' : '❌ Not compiled'}</span></div>
+  `;
+  document.getElementById('explanation-display').textContent =
+    data.explanation || 'No additional explanation provided.';
+}
+
+function showError(message) {
+  document.getElementById('results-content').innerHTML = `
+    <div class="error-card">
+      <span style="font-size:20px;flex-shrink:0">❌</span>
+      <div>
+        <strong>Generation Failed</strong>
+        <pre>${esc(message)}</pre>
+      </div>
+    </div>
+  `;
+  document.getElementById('results-content').classList.add('visible');
+  document.getElementById('empty-state').style.display = 'none';
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────
+
+function switchTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  const activeBtn = btn || document.querySelector(`.tab-btn[onclick*="'${name}'"]`);
+  if (activeBtn) activeBtn.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+
+  if (name === 'preview' && window._viewer) {
+    window._viewer.init();
+    setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
+  }
+}
+
+// ── Actions ───────────────────────────────────────────────────────────────
+
+function copyCode() {
+  const code = document.getElementById('code-display').textContent;
+  navigator.clipboard.writeText(code).then(() => {
+    const btn = event.currentTarget;
+    const orig = btn.textContent;
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+
+function downloadFile(type) {
+  if (!currentModelId) return;
+  const a = document.createElement('a');
+  a.href = `/download/${currentModelId}/${type}`;
+  a.click();
+}
+
+function resetView() { if (window._viewer) window._viewer.resetView(); }
+function toggleWireframe() { if (window._viewer) window._viewer.toggleWireframe(); }
+function toggleGrid() { if (window._viewer) window._viewer.toggleGrid(); }
+
+// ── Keyboard shortcut ─────────────────────────────────────────────────────
+
+document.getElementById('prompt').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.ctrlKey) generate();
+});
+
+// ── Utility ───────────────────────────────────────────────────────────────
+
+function esc(str) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(String(str)));
+  return d.innerHTML;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+
+loadSettings();
+</script>
+</body>
+</html>
