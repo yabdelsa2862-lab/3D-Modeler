@@ -2,19 +2,19 @@
 # 3D‑Modeler
 
 **3D‑Modeler** is a Python‑based toolkit for generating, manipulating, and serving 3D models.  
-It integrates SCAD, STL, and parametric scripts to help you build procedural models, preview them, and export them directly to the browser or a local viewer window.
+It supports working with `.scad`, `.stl`, and custom `.py` model definitions, enabling a flexible parametric workflow for creators and developers.  
 
 ---
 
-## 🧩 Features
-- Procedural generation of 3D models with Python and SCAD
-- Automatic conversion to STL mesh outputs
-- Local preview in a dedicated OpenGL/PyQt (or similar) viewer
-- Built‑in lightweight server to render or stream models dynamically
-- Windows batch startup for convenience
+## Features
+- Procedural and parametric model generation.  
+- SCAD → STL export workflow.  
+- Local server for viewing and serving 3D models.  
+- Optional interactive window interface.  
+- Built for rapid iteration and integration with Devhub creative workflows.
 
 ---
 
-## 🪟 How to Install & Run (Windows)
-
-### 1. Clone the repository
+## Installation (Windows)
+1. Clone this repository:
+   
