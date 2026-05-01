@@ -1,62 +1,59 @@
 # 3D‑Modeler
 
-**3D‑Modeler** is a Python‑based system for generating, manipulating, and serving 3D models.  
-It’s designed to help you create parametric and procedural models in formats like SCAD and STL, and includes tools for both scripted generation and interactive viewing.
+**3D‑Modeler** is a Python‑based toolkit for generating, manipulating, and serving 3D models.  
+It supports SCAD and STL workflows and can run a lightweight local server or windowed viewer for inspecting generated geometry.
 
 ---
 
-## 🧩 Features
-- Generate 3D models with Python scripts (`/privatemodels/*.py`)
-- Export and view SCAD and STL files
-- Serve models locally via an integrated server (`privateserver.py`)
-- Preview models in an interactive window (`privatewindow.py`)
-- One‑click launch with the included Windows batch file (`privaterun.bat`)
+## Features
+- Procedural 3D model generation with Python
+- Exports to SCAD and STL formats
+- Lightweight local preview server
+- Windows launcher and viewer support
 
 ---
 
-## ⚙️ Setup on Windows
+## Installation on Windows
 
-1. Clone this repository  
-   Open Command Prompt and run:  
-   `git clone https://github.com/yabdelsa2862-lab/3D-Modeler`
+1. Clone this repository:
+   git clone https://github.com/yabdelsa2862-lab/3D-Modeler
+   cd 3D-Modeler
 
-2. Enter the project folder  
-   `cd 3D-Modeler`
+2. Install required dependencies:
+   pip install -r privaterequirements.txt
 
-3. Install dependencies  
-   `pip install -r privaterequirements.txt`
-
-4. Run the server  
-   `python privateserver.py`
-
-5. (Optional) Launch the interactive viewer  
-   `python privatewindow.py`
-
-6. Or start everything automatically  
-   Double-click the file `privaterun.bat`
+3. (Optional) Verify the environment:
+   python --version
+   pip list
 
 ---
 
-## 💡 Example Usage
+## Usage
 
-After setup, you can generate models using scripts in `/privatemodels`. For example:  
-`python privatemodels/8582622a7d.py`  
+Start the local server:
+   python privateserver.py
 
-This will create a corresponding `.scad` and `.stl` file ready for viewing or export.
+Open the 3D viewer window:
+   python privatewindow.py
 
----
+Generate models manually:
+   python privategeneration.py
 
-## 🧠 About
-
-Created by **Yousef Mohamed Nazmi**, the 3D‑Modeler toolkit combines Python and OpenSCAD workflows to streamline 3D object generation for creative and development projects.
-
----
-
-## 🪟 Requirements
-- Windows 10 or later  
-- Python 3.10+  
-- OpenSCAD (optional, for previewing `.scad` files)  
+Or run everything automatically:
+   privaterun.bat
 
 ---
 
-Enjoy exploring procedural modeling with **3D‑Modeler**!
+## Folder Structure
+- `privatemodels/` — contains Python, SCAD, and STL model definitions and outputs  
+- `privategeneration.py` — handles 3D object generation  
+- `privateserver.py` — hosts a local HTTP server for viewing models  
+- `privatewindow.py` — provides a desktop viewer on Windows  
+- `privaterun.bat` — simple launcher combining the above  
+- `privaterequirements.txt` — dependency list
+
+---
+
+## License
+This project is maintained by Yousef Mohamed Nazmi.  
+All rights reserved unless otherwise stated.
